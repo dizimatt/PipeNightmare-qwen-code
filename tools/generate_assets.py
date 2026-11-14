@@ -1,14 +1,30 @@
 #!/usr/bin/env python3
 """Offline asset generator for Pipe Nightmare (R-008).
 
-Every graphic the game shows is authored here as a PNG. Nothing is drawn by
-browser JS at runtime; Phaser just loads what this script writes into
-assets/. Re-running must reproduce byte-identical output, so there is no
-randomness and every iteration over frames is sorted.
-
     python3 tools/generate_assets.py
 
+This is a bootstrap step: it draws every graphic once into `assets/frames/` as
+an individual PNG, then packs those files into `assets/atlas.png`. From then on
+the loose PNGs are the artwork — edit one by hand, or ask an image model for an
+adjusted version with `tools/edit_asset.py` — and re-running this script leaves
+existing frames alone. `assets/atlas.png` and `assets/atlas.json` are derived:
+never edit them, they are rebuilt from `frames/` on every run.
+
+    python3 tools/generate_assets.py --pack-only    # just repack what is in frames/
+    python3 tools/generate_assets.py --force        # redraw frames that already exist
+
+Nothing is drawn by browser JS at runtime; Phaser just loads the packed atlas.
 Pillow is an authoring-time dependency only; the game does not need it.
+
+Skins
+-----
+    python3 tools/generate_assets.py --skin copper
+
+`--skin` names a directory of material swatches under `assets/skins/` (or a
+path to one), produced offline by `tools/fetch_skin.py`. A swatch only
+supplies hue and grain: the frame's own shading and alpha are kept, so
+silhouettes, edge openings and every frame key are untouched. Frames whose
+group has no swatch keep their procedural colours.
 
 Resolution model
 ----------------
@@ -21,11 +37,12 @@ resize, which is what makes edges and gradients smooth instead of stepped.
 
 from __future__ import annotations
 
+import argparse
 import json
 import math
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont, ImageStat
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "assets"
@@ -592,6 +609,72 @@ def draw_favicon():
     return img.resize((32, 32), Image.LANCZOS)
 
 
+# ---------------------------------------------------------------- skins
+# Which swatch a frame draws its material from. Water, icons, the spill marker
+# and the standalone title/bg stay procedural: water has to keep reading as
+# water, and glyphs have to stay legible on whatever the panels become.
+SKIN_GROUPS = (
+    (("pipe_", "source", "drain"), "metal"),
+    (("panel", "btn_", "slot_", "tile_", "cell_"), "panel"),
+)
+
+
+def skin_group(name):
+    for prefixes, group in SKIN_GROUPS:
+        if name.startswith(prefixes):
+            return group
+    return None
+
+
+def load_skin(arg):
+    """Swatches from assets/skins/<arg>, or from <arg> if it is already a path."""
+    d = Path(arg)
+    if not d.is_dir():
+        d = OUT / "skins" / arg
+    if not d.is_dir():
+        raise SystemExit(f"no skin at {d} — fetch one first: python3 tools/fetch_skin.py {arg}")
+    swatches = {f.stem: Image.open(f).convert("RGB") for f in sorted(d.glob("*.png"))}
+    if not swatches:
+        raise SystemExit(f"{d} holds no swatch PNGs")
+    return swatches
+
+
+def apply_material(img, swatch, neutral_below=40, saturated_above=72):
+    """Chroma transfer: the frame keeps its own shading and alpha and takes
+    hue, grain and warmth from the swatch.
+
+    out_channel = frame_luma + (swatch_channel - swatch_luma). Subtracting the
+    swatch's single luma rather than each channel's own mean is what keeps the
+    hue: per-channel means would flatten copper to grey and leave only grain.
+
+    Pixels that are already strongly coloured keep their own colour, ramped in
+    over that range of channel spread. Steel is near-neutral and takes the
+    material; the cyan drop at the tap's mouth and the water in the bucket are
+    not, and would otherwise come out copper. The ramp keeps the boundary
+    anti-aliased instead of leaving a hard seam.
+
+    Whole images, fixed integer arithmetic, no randomness, so re-running
+    reproduces every byte. Alpha is passed through untouched, which is what
+    keeps the pipe frames crossing exactly their declared openings.
+    """
+    r, g, b, a = img.split()
+    orig = Image.merge("RGB", (r, g, b))
+    lum = orig.convert("L")
+    m = swatch.resize(img.size, Image.LANCZOS)
+    base = round(ImageStat.Stat(m.convert("L")).mean[0])
+    tinted = Image.merge("RGB", [ImageChops.add(lum, ch, 1.0, -base) for ch in m.split()])
+
+    spread = ImageChops.subtract(
+        ImageChops.lighter(ImageChops.lighter(r, g), b),
+        ImageChops.darker(ImageChops.darker(r, g), b))
+    keep = spread.point(lambda v: min(255, max(0, int((v - neutral_below) * 255 /
+                                                      (saturated_above - neutral_below)))))
+    # composite() pastes its first image wherever the mask is set, so the
+    # strongly-coloured pixels get their original colour back.
+    out = ImageChops.composite(orig, tinted, keep)
+    return Image.merge("RGBA", [*out.split(), a])
+
+
 # ---------------------------------------------------------------- packing
 def pack(frames):
     """Deterministic shelf pack; names sorted so output never reflows."""
@@ -640,7 +723,38 @@ def write_atlas(frames):
     return len(manifest["frames"])
 
 
-def build_atlas_frames():
+# ---------------------------------------------------------------- frames
+# One PNG per frame key is the artwork; the atlas is only ever a pack of them.
+# Anything you drop in here becomes a frame the game can name, and nothing in
+# here is overwritten unless asked, so hand and model edits survive.
+FRAMES_DIR = OUT / "frames"
+
+
+def write_frames(frames, force=False):
+    FRAMES_DIR.mkdir(parents=True, exist_ok=True)
+    written = kept = 0
+    for name in sorted(frames):
+        dest = FRAMES_DIR / f"{name}.png"
+        if dest.exists() and not force:
+            kept += 1
+            continue
+        frames[name].save(dest, optimize=True)
+        written += 1
+    return written, kept
+
+
+def read_frames():
+    frames = {p.stem: Image.open(p).convert("RGBA") for p in sorted(FRAMES_DIR.glob("*.png"))}
+    if not frames:
+        raise SystemExit(f"nothing in {FRAMES_DIR}; run this script without --pack-only first")
+    return frames
+
+
+def pack_frames_dir():
+    return write_atlas(read_frames())
+
+
+def build_atlas_frames(skin=None):
     frames = {}
     for shape in sorted(SHAPES):
         frames[f"pipe_{shape}"] = draw_pipe(shape)
@@ -670,23 +784,65 @@ def build_atlas_frames():
     frames["icon_fast_off"] = draw_icon_fast(False)
     frames["icon_locked"] = draw_icon_lock(True)
     frames["icon_play"] = draw_icon_lock(False)
+
+    if skin:
+        for name in sorted(frames):
+            group = skin_group(name)
+            if group and group in skin:
+                frames[name] = apply_material(frames[name], skin[group])
     return frames
 
 
+def write_standalone(name, img, force):
+    """The three big images live outside the atlas, and are equally yours to edit."""
+    dest = OUT / name
+    if dest.exists() and not force:
+        return False
+    img.save(dest, optimize=True)
+    return True
+
+
 def main():
+    ap = argparse.ArgumentParser(description="bootstrap the artwork in assets/frames/ and pack it")
+    ap.add_argument("--skin", metavar="NAME",
+                    help="material swatches from assets/skins/NAME, or a path to a swatch dir")
+    ap.add_argument("--force", action="store_true",
+                    help="redraw frames and standalone images that already exist")
+    ap.add_argument("--pack-only", action="store_true",
+                    help="rebuild the atlas from assets/frames/ without drawing anything")
+    args = ap.parse_args()
+
     OUT.mkdir(parents=True, exist_ok=True)
-    frames = build_atlas_frames()
-    count = write_atlas(frames)
-    draw_title().save(OUT / "title.png", optimize=True)
-    draw_background().save(OUT / "bg.png", optimize=True)
-    draw_favicon().save(OUT / "favicon.png", optimize=True)
+
+    if args.pack_only:
+        print(f"atlas: packed {pack_frames_dir()} frames from {FRAMES_DIR.relative_to(ROOT)}")
+        return
+
+    skin = load_skin(args.skin) if args.skin else None
+    frames = build_atlas_frames(skin)
+    written, kept = write_frames(frames, args.force)
+    count = pack_frames_dir()
+    drawn = 0
+    for name, fn in (("title.png", draw_title), ("bg.png", draw_background),
+                     ("favicon.png", draw_favicon)):
+        drawn += write_standalone(name, fn(), args.force)
+    fresh, standing = drawn, 3 - drawn
 
     water = sum(1 for n in frames if n.startswith("water_"))
     pipes = sum(1 for n in frames if n.startswith("pipe_"))
-    print(f"atlas: {count} frames at {SCALE}x detail (tile frames are {int(TILE * SCALE)}px)")
+    print(f"frames: {written} drawn, {kept} already yours and left alone "
+          f"({count} packed into atlas.png at {SCALE}x detail)")
     print(f"  {pipes} pipe shapes, {water} water fill frames, {count - pipes - water} tiles and UI")
-    print("standalone: title.png, bg.png, favicon.png")
+    if skin:
+        skinned = sum(1 for n in frames if skin_group(n) in skin)
+        print(f"  skin {args.skin}: {skinned} frames re-materialled from {sorted(skin)}")
+        if kept:
+            print(f"  note: {kept} frame(s) already existed, so the skin was NOT applied to "
+                  f"them — --force overwrites them, including any edits you made by hand")
+    print(f"standalone: title.png, bg.png, favicon.png — {fresh} drawn, {standing} left alone")
     print(f"the game must draw these at scale {1 / SCALE}")
+    print(f"to change one image from now on: edit {FRAMES_DIR.relative_to(ROOT)}/<name>.png, "
+          f"then python3 tools/generate_assets.py --pack-only")
 
 
 if __name__ == "__main__":

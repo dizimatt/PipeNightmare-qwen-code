@@ -52,21 +52,92 @@ screenshots to `.qwen/shots/`.
 | `src/logic/` | pure game rules, no Phaser |
 | `src/scenes/` | Boot, Menu, Game, Error |
 | `levels/` | `level-1.json` … `level-5.json` |
-| `assets/` | generated PNG atlas + favicon |
-| `tools/` | asset generator, level tuner, headless harness |
+| `assets/frames/` | the artwork: one PNG per frame, yours to edit |
+| `assets/` | the packed atlas derived from those frames, plus `title`/`bg`/`favicon` |
+| `tools/` | asset generator, image-model editor, level tuner, headless harness |
 | `tests/` | `node --test` suite |
 
-## Regenerating the artwork
+## The artwork
 
-All graphics are pre-generated PNGs (R-008); nothing is drawn at runtime.
+Every graphic is a PNG (R-008); nothing is drawn at runtime. The artwork lives
+as one file per frame in `assets/frames/`, and `assets/atlas.png` is just a
+pack of them, which is what the game loads.
 
 ```sh
-python3 tools/generate_assets.py
+python3 tools/generate_assets.py             # draw any frame that does not exist yet, then pack
+python3 tools/generate_assets.py --pack-only # just re-pack assets/frames/ into the atlas
+python3 tools/generate_assets.py --force     # redraw frames that already exist
 ```
 
-Requires Pillow. This is an authoring step only — the game itself needs no
-build and no Python. The script is deterministic, so re-running it reproduces
-`assets/` byte for byte. Edit the palette constants near the top to restyle.
+Requires Pillow, and it is an authoring step only — the game needs no build and
+no Python. `generate_assets.py` is meant to be run once to bootstrap the
+artwork; after that the loose PNGs are the thing you edit, and re-running the
+generator leaves them alone. `assets/atlas.png` and `assets/atlas.json` are
+derived — never edit them, they are rebuilt on every run. Packing is lossless:
+the round trip through 146 individual PNGs reproduces the atlas byte for byte.
+After editing a frame by hand, re-pack and hard-reload the browser
+(Ctrl+Shift+R — PNGs are not cache-busted, only level JSON is).
+
+### Asking an image model to adjust one
+
+```sh
+export QWENCLOUD_TOKEN_PLAN_API_KEY=...
+python3 tools/edit_asset.py pipe_ew --prompt "flaking orange rust, pitted metal"
+python3 tools/edit_asset.py --group pipes --prompt "frosted over with ice build-up"
+python3 tools/edit_asset.py bg title --prompt "a stormier sea behind the board"
+```
+
+It sends the existing PNG as input, asks for the same thing adjusted, and
+returns it at the frame's exact size. The answer lands in
+`assets/proposals/<name>.png` so you can look first; `--apply` writes it into
+`assets/frames/` and re-packs. `--dry-run` shows what would be asked without
+sending anything, and one image credit is spent per asset per attempt.
+
+Three guards always run, because a live call showed the model cannot be trusted
+with them: the frame's own alpha is put back (the model returns no
+transparency), and for pipe frames the dark bore and the pixels at each open end
+are kept from the original — a bore is open at both ends, so the model reads it
+as background and repaints it. Pixels that were semi-transparent to begin with
+(the contact shadow) also keep the original colour, since the model's flat
+background shows straight through them.
+
+`water_*` frames are refused without `--force`: the fill front has to land on
+step/10 of the tile length, which is one of the checked properties below.
+
+### Decorations from a sheet
+
+For things that are *added* to the pipes — snow, icicles, moss, rust flakes —
+one image carries many pieces, which is both cheaper and more consistent than
+asking per frame:
+
+```sh
+python3 tools/make_decals.py --prompt "long icicles, snow caps, frost clumps,
+    well separated, flat magenta background, no pipes, no text"      # 1 credit
+python3 tools/place_decals.py --dry-run    # where each piece would land
+python3 tools/place_decals.py              # paste onto the pipe frames, repack
+python3 tools/place_decals.py --undo       # back to the frames as they were
+```
+
+`make_decals.py` keys the background out by colour, finds each shape, and slices
+it into `assets/decals/`. Nothing trusts a grid, because the model will not draw
+one: the shapes are detected wherever they happen to be. Re-slicing a sheet you
+painted over costs nothing — `--from-sheet assets/decal-sheet.png`.
+
+`place_decals.py` only decides *where* pieces go, from
+`assets/decals/placement.json`, which is yours to edit: how many caps and
+hangs, how big in frame pixels, how much jitter, and per-shape overrides. It
+never stacks — it composites onto the pristine copies it captures in
+`assets/frames/base/`, so running it twice gives the same picture.
+
+Three regions are kept clear by construction, and they are contract rather than
+taste: the bore (the water sprite draws inside it, so ice there hides the fill),
+the collar zone at each open end, and the middle of every edge — art reaching an
+edge reads as a connection, which on a closed side invents one. The edge check
+under "Two properties of the output" catches it if that ever regresses.
+
+Physics sets the sizes: a 46-unit tube in a 64-unit tile leaves about nine units
+of sky, so an icicle longer than roughly 12 px gets shortened automatically
+rather than being allowed to overlap the tile edge.
 
 Frames are authored at `SCALE = 2` PNG pixels per world unit, so a 64-unit
 tile is a 128px frame and `src/assets.js` draws it at 0.5 scale. Changing
@@ -94,6 +165,30 @@ for st in range(1, 11):
 print('edge mismatches:', bad, '| fill strictly increasing:', mono)
 PY
 ```
+
+## Alternative skins
+
+For a uniform material across many frames at once, rather than one image at a
+time:
+
+```sh
+export QWENCLOUD_TOKEN_PLAN_API_KEY=...
+python3 tools/fetch_skin.py copper --material "brushed copper"
+python3 tools/generate_assets.py --skin copper --force
+```
+
+`fetch_skin.py` writes `assets/skins/copper/{metal,panel}.png` and commits them,
+because the image API returns a URL that expires within a day and a fresh call
+is never pixel-identical — caching the swatches as source keeps the generator
+offline. A skin contributes hue and grain only: shading and alpha stay as
+drawn, so frame keys, tile sizes and the edge-opening and water-front checks are
+unaffected, and strongly-coloured details (water in the tap and bucket, blocked
+tiles) are left alone.
+
+Because frames are write-once now, `--skin` needs `--force` to reach artwork
+that already exists — and `--force` also throws away any hand or model edits to
+those frames, so commit `assets/frames/` first and revert with
+`git checkout assets/frames/`.
 
 ## Tuning the levels
 
