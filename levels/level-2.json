@@ -1,0 +1,15 @@
+{
+  "name": "Two Turns",
+  "width": 6,
+  "height": 6,
+  "sourceRow": 0,
+  "drainRow": 3,
+  "blocked": [
+    { "row": 2, "col": 1 },
+    { "row": 1, "col": 3 },
+    { "row": 3, "col": 4 }
+  ],
+  "queueSize": 5,
+  "startDelayMs": 8000,
+  "waterMsPerTile": 2000
+}

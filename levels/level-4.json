@@ -1,0 +1,21 @@
+{
+  "name": "Cross Currents",
+  "width": 9,
+  "height": 7,
+  "sourceRow": 3,
+  "drainRow": 3,
+  "blocked": [
+    { "row": 3, "col": 2 },
+    { "row": 3, "col": 5 },
+    { "row": 3, "col": 7 },
+    { "row": 1, "col": 4 },
+    { "row": 5, "col": 4 },
+    { "row": 0, "col": 6 },
+    { "row": 6, "col": 6 },
+    { "row": 2, "col": 1 },
+    { "row": 4, "col": 8 }
+  ],
+  "queueSize": 5,
+  "startDelayMs": 6000,
+  "waterMsPerTile": 1400
+}

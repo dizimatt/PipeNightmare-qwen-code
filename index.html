@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pipe Nightmare</title>
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<style>
+  :root { color-scheme: dark; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #080e1a;
+    display: grid;
+    place-items: center;
+    font-family: "Trebuchet MS", Verdana, sans-serif;
+  }
+  #game { width: 100%; max-width: 1280px; aspect-ratio: 16 / 9; }
+  #booting {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: #7e9cbe;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    font-size: 13px;
+    pointer-events: none;
+  }
+  noscript { color: #e0596a; padding: 2rem; text-align: center; }
+</style>
+</head>
+<body>
+  <div id="game"></div>
+  <div id="booting">pressurising&hellip;</div>
+  <noscript>Pipe Nightmare needs JavaScript enabled.</noscript>
+
+  <script src="lib/phaser.min.js"></script>
+  <script type="module" src="src/main.js"></script>
+  <script>
+    // If the module never boots (bad path, blocked file:// fetch), say so
+    // instead of leaving a black rectangle.
+    setTimeout(function () {
+      var el = document.getElementById('booting');
+      if (el && window.__pipeNightmareBooted !== true) {
+        el.textContent = 'Still loading. Serve this folder over HTTP (python3 -m http.server) rather than opening index.html directly.';
+      }
+    }, 8000);
+  </script>
+</body>
+</html>

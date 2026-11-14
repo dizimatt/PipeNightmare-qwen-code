@@ -1,0 +1,18 @@
+{
+  "name": "The Squeeze",
+  "width": 8,
+  "height": 6,
+  "sourceRow": 3,
+  "drainRow": 3,
+  "blocked": [
+    { "row": 3, "col": 3 },
+    { "row": 1, "col": 5 },
+    { "row": 4, "col": 5 },
+    { "row": 3, "col": 6 },
+    { "row": 0, "col": 2 },
+    { "row": 5, "col": 1 }
+  ],
+  "queueSize": 5,
+  "startDelayMs": 7000,
+  "waterMsPerTile": 1700
+}

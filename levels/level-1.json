@@ -1,0 +1,14 @@
+{
+  "name": "First Trickle",
+  "width": 8,
+  "height": 8,
+  "sourceRow": 1,
+  "drainRow": 1,
+  "blocked": [
+    { "row": 0, "col": 2 },
+    { "row": 2, "col": 2 }
+  ],
+  "queueSize": 5,
+  "startDelayMs": 9000,
+  "waterMsPerTile": 2400
+}
