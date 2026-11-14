@@ -58,8 +58,9 @@ def generate(prompt, seed, size, image=None, negative=NEGATIVE, timeout=300):
     if not key:
         raise SystemExit(f"{KEY_ENV} is not set — export it first")
 
-    content = [] if image is None else [{"image": d} for d in
-                                        (image if isinstance(image, list) else [image])]
+    content = [{"image": d if isinstance(d, str) else data_uri(d)}
+               for d in ([] if image is None else
+                         (image if isinstance(image, list) else [image]))]
     content.append({"text": prompt})
     body = {
         "model": MODEL,

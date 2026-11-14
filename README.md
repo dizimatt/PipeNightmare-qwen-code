@@ -139,6 +139,49 @@ Physics sets the sizes: a 46-unit tube in a 64-unit tile leaves about nine units
 of sky, so an icicle longer than roughly 12 px gets shortened automatically
 rather than being allowed to overlap the tile edge.
 
+### Redrawing a whole set in one call
+
+For a complete redesign rather than added decoration — "icy pipes with bugs on
+them" — the cost problem has a structural answer: the gateway limits a request
+by *area*, not by how many things are in it. Six frames in a 3x2 grid of 1024px
+cells is 3072x2048 = 6,291,456 px, inside the 6,553,600 ceiling, so **one
+credit buys every frame the pixel budget it would have got from its own call.**
+
+```sh
+python3 tools/redraw_sheet.py --group pipes --prompt "an icy theme, frozen
+    pipes with icicles and rime, two cartoonish bugs clinging to the metal"
+python3 tools/redraw_sheet.py --group pipes --dry-run --prompt "..."            # compose only
+python3 tools/redraw_sheet.py --group pipes --from-sheet assets/redraw-answer.png  # re-slice, 0 credits
+python3 tools/redraw_sheet.py --group pipes --prompt "..." --apply
+```
+
+It lays the frames out on a magenta sheet, asks for the whole thing redrawn,
+keys the background out by colour and cuts it back into 128px frames. One
+picture also means one consistent idea of the theme, which six separate calls
+never give you. The trade is per-frame re-rolling: re-roll the sheet (1 credit)
+or fix one cell in `assets/redraw-answer.png` and re-slice it for free.
+
+**The answer replaces the frame outright.** Nothing is blended in from the old
+artwork, because a blend is a mixture of the old look and the new one — the
+first version restored the bore, the collars and the shadow from the copper
+frames and shipped icy pipes with copper guts. 82% of that copper turned out to
+be the model's own doing anyway: it was asked to redesign copper, so it kept
+the copper and painted ice over it. Hence `--base steel`, the default, which
+feeds the model the drawn *shape* instead of the look it is meant to replace.
+
+A wrong answer is not a bug to patch: re-run the prompt. So the tool repairs
+nothing and only reports, per frame:
+
+    openings OK | bore luma 58        # still crosses its declared edges; the
+                                      # channel stays dark enough for cyan water
+    83% of cell drawn, +3207 new silhouette px
+    ART LEAKING ONTO CLOSED EDGES at s:3    # re-roll, or ask in the prompt
+
+Two ceilings apply and only the tighter one matters: the gateway validates area
+up to 2560x2560, but an edit request carrying an input image is rejected by the
+algo beyond 2048 on a side, so cells are sized to fit both. Undo is
+`git checkout assets/frames/ && python3 tools/generate_assets.py --pack-only`.
+
 Frames are authored at `SCALE = 2` PNG pixels per world unit, so a 64-unit
 tile is a 128px frame and `src/assets.js` draws it at 0.5 scale. Changing
 `SCALE` means changing `ASSET_SCALE` there to match. Two properties of the
