@@ -19,14 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-Third-party components
-----------------------
-
-`lib/phaser.min.js` is not covered by the copyright above. It is Phaser 3.90.0,
-copyright Rich Davey / Photon Storm Ltd., which is itself distributed under the
-MIT licence and keeps its own terms. See https://phaser.io and the Phaser
-repository for its licence text and attribution.
-
-The PNG artwork under `assets/` and the level data under `levels/` are part of
-the "Software" and are licensed under the MIT terms above.
