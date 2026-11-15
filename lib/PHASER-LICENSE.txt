@@ -1,0 +1,56 @@
+Phaser is vendored at lib/phaser.min.js rather than loaded from a CDN, so its
+licence notice is recorded here. Everything above the separator below is an
+annotation written by the Pipe Nightmare authors; the text under it is Phaser's
+own, copied byte for byte.
+
+Provenance, all of it checked offline on 2026-11-15:
+
+  file      lib/phaser.min.js
+  sha256    e92ddef111ba42e92d316979c732311757093688ea1810591cb7aa2858eba7a7
+  md5       c821d2f9ad096f568c819fe1b4bc41e6
+  version   3.90.0, read from the VERSION:"3.90.0" string inside the bundle
+  licence   MIT, per the registry.npmjs.org/phaser metadata for 3.90.0
+            ("license": "MIT"), from a copy of that packument cached in
+            ~/.npm/_cacache on this machine
+  upstream  https://github.com/phaserjs/phaser  |  https://phaser.io
+
+The minified bundle ships no licence banner, and MIT requires the copyright and
+permission notice to accompany copies, which is what this file does.
+
+One caveat, stated rather than glossed: the text below came from LICENSE.md of
+the Phaser 4.2.1 package installed at ~/Documents/LoopSchool/node_modules/phaser
+— the only copy of Phaser's licence reachable from this machine while there is
+no network. Phaser's MIT body is the same across versions, but the copyright
+line names Richard Davey and Phaser Studio Inc., and Phaser changed hands during
+its 3.x series, so the wording that shipped with 3.90.0 has not been confirmed.
+To re-check it once a network is available:
+
+  gh api -H 'Accept: application/vnd.github.raw' \
+    'repos/phaserjs/phaser/contents/LICENSE.txt?ref=3.90.0'
+
+Pipe Nightmare's own code, the assets/ artwork and the levels/ data are MIT,
+Copyright (c) 2026 Matthew Dilley — see LICENSE. lib/phaser.min.js stays under
+the terms recorded below instead.
+
+--- Phaser's own licence text, verbatim from here to the end ---
+
+The MIT License (MIT)
+
+Copyright (c) 2026 Richard Davey, Phaser Studio Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

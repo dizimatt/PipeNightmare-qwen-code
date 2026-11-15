@@ -49,6 +49,7 @@ screenshots to `.qwen/shots/`.
 |---|---|
 | `index.html` | entry point |
 | `lib/phaser.min.js` | vendored Phaser 3.90.0 — not loaded from a CDN |
+| `lib/PHASER-LICENSE.txt` | that engine's own MIT notice |
 | `src/logic/` | pure game rules, no Phaser |
 | `src/scenes/` | Boot, Menu, Game, Error |
 | `levels/` | `level-1.json` … `level-5.json` |
@@ -249,6 +250,9 @@ MIT — see [LICENSE](LICENSE). Covers the code, the `assets/` artwork and the
 `levels/` data, so a frame you redraw or a level you retune is licensed to you
 on the same terms as the JavaScript.
 
-`lib/phaser.min.js` is not covered by that copyright: it is Phaser 3.90.0,
-copyright Rich Davey / Photon Storm Ltd., distributed under its own MIT licence
-and keeping its own terms. See <https://phaser.io>.
+`lib/phaser.min.js` is not covered by that copyright: it is Phaser 3.90.0, MIT
+licensed by its own authors, and its notice is recorded in
+[`lib/PHASER-LICENSE.txt`](lib/PHASER-LICENSE.txt). The minified bundle carries
+no licence banner, so that file is what makes the terms travel with the copy
+vendored here; it also records which parts of that attribution are verified and
+which still need checking against the upstream tag.
