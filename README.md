@@ -242,3 +242,9 @@ node tools/tune-levels.mjs
 Reports, per level, whether it is winnable, the shortest route, the score a
 perfect run earns and how long the level takes. Level parameters are all data
 in `levels/*.json`, so editing them changes the game with no code change.
+
+## License
+
+MIT — see [LICENSE](LICENSE). Covers the code, the `assets/` artwork and the
+`levels/` data. `lib/phaser.min.js` is excluded: it is Phaser 3.90.0, copyright
+Rich Davey / Photon Storm Ltd., under its own MIT licence.
